@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Haydn 3A — Aviation, Architecture & Astrophotography Portfolio">
+  <meta name="robots" content="index, follow">
+  <meta property="og:title" content="Haydn 3A — Photography Portfolio">
+  <meta property="og:description" content="Aviation · Architecture · Astrophotography">
+  <meta property="og:type" content="website">
+  <title>Haydn 3A — Aviation · Architecture · Astrophotography</title>
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta http-equiv="X-Frame-Options" content="DENY">
+  <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+  <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230a0a0b'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-size='14' font-family='Georgia' fill='%23c9a96e'%3E3A%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+
+  <!-- Page load progress bar -->
+  <div id="progressBar" aria-hidden="true"></div>
+
+  <!-- Custom cursor -->
+  <div id="cursorDot"  style="position:fixed;pointer-events:none;z-index:9999;"><div class="cursor-dot"  style="position:absolute;"></div></div>
+  <div id="cursorRing" style="position:fixed;pointer-events:none;z-index:9998;"><div class="cursor-ring" style="position:absolute;"></div></div>
+
+  <!-- Mobile nav overlay -->
+  <nav class="mobile-nav" id="mobileNav" aria-label="Mobile navigation">
+    <a href="#hero"    onclick="closeMobileNav()">Home</a>
+    <a href="#gallery" onclick="closeMobileNav()">Gallery</a>
+    <a href="#about"   onclick="closeMobileNav()">About</a>
+    <a href="#contact" onclick="closeMobileNav()">Contact</a>
+  </nav>
+
+  <!-- Header / Nav -->
+  <header id="nav" role="banner">
+    <a href="#hero" class="nav-logo" aria-label="Haydn 3A Home">HAYDN <span>3A</span></a>
+    <ul class="nav-links" role="list">
+      <li><a href="#hero"    class="active">Home</a></li>
+      <li><a href="#gallery">Gallery</a></li>
+      <li><a href="#about">About</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+    <div class="nav-right">
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark mode">
+        <span class="icon-moon" aria-hidden="true">☽</span>
+        <span class="icon-sun"  aria-hidden="true">☀</span>
+      </button>
+      <button class="nav-burger" id="navBurger" aria-label="Open menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section id="hero" aria-label="Hero">
+    <div class="hero-slides" id="heroSlides" aria-hidden="true"></div>
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <p class="hero-eyebrow">Photography Portfolio</p>
+      <h1 class="hero-title">Haydn <em>3A</em></h1>
+      <p class="hero-subtitle">Aviation &nbsp;·&nbsp; Architecture &nbsp;·&nbsp; Astrophotography</p>
+    </div>
+    <div class="hero-dots" id="heroDots" role="tablist" aria-label="Slide navigation"></div>
+    <div class="scroll-cue" aria-hidden="true"><span>Scroll</span><div class="scroll-line"></div></div>
+  </section>
+
+  <!-- Gallery -->
+  <section id="gallery" aria-labelledby="galleryTitle">
+    <div class="section-header">
+      <div>
+        <p class="section-label">Portfolio</p>
+        <h2 class="section-title" id="galleryTitle">The <em>Collection</em></h2>
+      </div>
+      <span class="section-count" id="galleryCount" aria-live="polite"></span>
+    </div>
+    <div class="gallery-tabs" role="tablist" aria-label="Photo categories">
+      <button class="tab-btn active" data-cat="all"              role="tab" aria-selected="true">All</button>
+      <button class="tab-btn"        data-cat="aviation"         role="tab" aria-selected="false">Aviation</button>
+      <button class="tab-btn"        data-cat="architecture"     role="tab" aria-selected="false">Architecture</button>
+      <button class="tab-btn"        data-cat="astrophotography" role="tab" aria-selected="false">Astrophotography</button>
+    </div>
+    <div class="photo-grid" id="photoGrid" role="list" aria-label="Photo gallery"></div>
+  </section>
+
+  <!-- About -->
+  <section id="about" aria-labelledby="aboutTitle">
+    <div class="about-text">
+      <p class="section-label">About</p>
+      <h2 class="about-title" id="aboutTitle">Three Disciplines,<br><em>One Vision</em></h2>
+      <p class="about-body" id="aboutBio"></p>
+      <div class="category-pills">
+        <div class="category-pill"><span class="pill-num">01</span><span class="pill-label">Aviation</span><span class="pill-icon">✈</span></div>
+        <div class="category-pill"><span class="pill-num">02</span><span class="pill-label">Architecture</span><span class="pill-icon">🏛</span></div>
+        <div class="category-pill"><span class="pill-num">03</span><span class="pill-label">Astrophotography</span><span class="pill-icon">✦</span></div>
+      </div>
+      <div class="about-stats" id="aboutStats"></div>
+    </div>
+    <div class="about-visual">
+      <div class="about-img-frame">
+        <img id="aboutImg" src="" alt="About Haydn 3A" loading="lazy"
+          onerror="this.parentElement.style.background='var(--bg-3)';this.style.display='none';">
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact -->
+  <section id="contact" aria-labelledby="contactTitle">
+    <div class="section-header">
+      <div>
+        <p class="section-label">Get In Touch</p>
+        <h2 class="section-title" id="contactTitle">License &amp; <em>Enquiries</em></h2>
+      </div>
+    </div>
+    <div class="contact-grid">
+      <div class="contact-info">
+        <p class="contact-lead">Interested in licensing an image, commissioning a shoot, or simply want to discuss photography? Reach out.</p>
+        <div class="contact-items" id="contactItems"></div>
+        <div class="contact-note">
+          <p>All photographs are protected under copyright. Unauthorised reproduction or commercial use without a licence is prohibited. All displayed images carry an embedded watermark.</p>
+        </div>
+      </div>
+      <div class="contact-form-wrap">
+        <form class="contact-form" id="contactForm" novalidate>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="contactName">Name</label>
+              <input type="text" id="contactName" name="name" placeholder="Your name" autocomplete="name" required>
+            </div>
+            <div class="form-group">
+              <label for="contactEmail">Email</label>
+              <input type="email" id="contactEmail" name="email" placeholder="your@email.com" autocomplete="email" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="contactSubject">Subject</label>
+            <select id="contactSubject" name="subject">
+              <option value="">Select a subject…</option>
+              <option value="licence">Image Licensing</option>
+              <option value="commission">Commission a Shoot</option>
+              <option value="print">Print Purchase</option>
+              <option value="collab">Collaboration</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="contactMessage">Message</label>
+            <textarea id="contactMessage" name="message" placeholder="Tell me more about your enquiry…" rows="5" required></textarea>
+          </div>
+          <!-- Honeypot anti-spam field — invisible to humans -->
+          <input type="text" name="_hp" tabindex="-1" autocomplete="off"
+            style="position:absolute;left:-9999px;opacity:0;pointer-events:none;" aria-hidden="true">
+          <button type="submit" class="form-submit" id="formSubmit">
+            <span class="submit-text">Send Enquiry</span>
+            <span class="submit-arrow">→</span>
+          </button>
+          <p class="form-note">Opens your email client. No data is stored on this site.</p>
+          <div class="form-success" id="formSuccess" aria-live="polite" hidden>✓ Your email client will open with the message pre-filled.</div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer role="contentinfo">
+    <div class="footer-logo">HAYDN <span>3A</span></div>
+    <p class="footer-copy" id="footerCopy"></p>
+    <div class="footer-social" id="footerSocial" aria-label="Social links"></div>
+  </footer>
+
+  <!-- Lightbox -->
+  <div id="lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer" tabindex="-1">
+    <button class="lb-close"  id="lbClose" aria-label="Close lightbox">✕</button>
+    <div    class="lb-counter" id="lbCounter" aria-live="polite"></div>
+    <button class="lb-arrow prev" id="lbPrev" aria-label="Previous photo">&#8592;</button>
+    <button class="lb-arrow next" id="lbNext" aria-label="Next photo">&#8594;</button>
+    <div class="lb-content">
+      <div class="lb-image-wrap" id="lbImageWrap">
+        <!-- Canvas renders the watermarked version; raw image never shown directly -->
+        <canvas id="lbCanvas" aria-label="Photograph"></canvas>
+        <!-- Transparent shield stops drag-selection -->
+        <div class="lb-shield" aria-hidden="true"></div>
+      </div>
+      <div class="lb-meta" id="lbMeta"></div>
+      <div class="lb-zoom-bar" aria-label="Zoom controls">
+        <button class="lb-zoom-btn" id="zoomOut"   aria-label="Zoom out"  title="Zoom out (−)">−</button>
+        <span   class="lb-zoom-level" id="zoomLevel" aria-live="polite">100%</span>
+        <button class="lb-zoom-btn" id="zoomIn"    aria-label="Zoom in"   title="Zoom in (+)">+</button>
+        <button class="lb-zoom-btn" id="zoomReset" aria-label="Reset zoom" title="Reset (0)" style="font-size:0.7rem;">⊡</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="visually-hidden">All images © Haydn 3A. Watermarked. All rights reserved.</p>
+
+  <script src="photos.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
