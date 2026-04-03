@@ -124,7 +124,7 @@ const SITE = {
   bio: "Capturing the extraordinary — from runways to rooftops to the edge of the universe.",
   social: {
     instagram: "#",   // e.g. "https://instagram.com/yourhandle"
-    twitter:   "#",
-    email:     "#"    // e.g. "mailto:you@example.com"
+    twitter:   "https://x.com/EnglishPhoto",
+    email:     "mailto:Haydn3A@outlook.com"    // e.g. "mailto:you@example.com"
   }
 };

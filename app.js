@@ -1,7 +1,8 @@
 /**
  * ============================================================
- *  HAYDN 3A — APPLICATION LOGIC
- *  No frameworks. Pure, fast, vanilla JS.
+ *  HAYDN 3A — APPLICATION LOGIC  v2
+ *  Canvas watermarking · Progress bar · Lightbox counter
+ *  Contact form · Shield overlay · All protections
  * ============================================================
  */
 
@@ -9,35 +10,38 @@
 
 /* ── STATE ─────────────────────────────────────────────────── */
 const state = {
-  currentCat:   'all',
+  currentCat:     'all',
   filteredPhotos: [],
-  lbIndex:      0,
-  zoom:         1,
-  zoomMin:      1,
-  zoomMax:      4,
-  zoomStep:     0.5,
-  heroIndex:    0,
-  heroPhotos:   [],
-  heroTimer:    null,
-  isDragging:   false,
-  dragStart:    { x: 0, y: 0 },
-  panOffset:    { x: 0, y: 0 },
-  panStart:     { x: 0, y: 0 },
+  lbIndex:        0,
+  zoom:           1,
+  zoomMin:        1,
+  zoomMax:        4,
+  zoomStep:       0.5,
+  heroIndex:      0,
+  heroPhotos:     [],
+  heroTimer:      null,
+  isDragging:     false,
+  panOffset:      { x: 0, y: 0 },
+  panStart:       { x: 0, y: 0 },
+  // Watermark cache: src → watermarked dataURL
+  wmCache:        new Map(),
 };
 
 /* ── DOM REFS ───────────────────────────────────────────────── */
-const $ = id => document.getElementById(id);
+const $  = id  => document.getElementById(id);
 const $$ = sel => document.querySelectorAll(sel);
 
 const dom = {
   nav:          $('nav'),
+  progressBar:  $('progressBar'),
   heroSlides:   $('heroSlides'),
   heroDots:     $('heroDots'),
   photoGrid:    $('photoGrid'),
   galleryCount: $('galleryCount'),
   lightbox:     $('lightbox'),
-  lbImg:        $('lbImg'),
+  lbCanvas:     $('lbCanvas'),
   lbMeta:       $('lbMeta'),
+  lbCounter:    $('lbCounter'),
   lbClose:      $('lbClose'),
   lbPrev:       $('lbPrev'),
   lbNext:       $('lbNext'),
@@ -53,10 +57,14 @@ const dom = {
   aboutStats:   $('aboutStats'),
   footerCopy:   $('footerCopy'),
   footerSocial: $('footerSocial'),
+  contactItems: $('contactItems'),
+  contactForm:  $('contactForm'),
+  formSuccess:  $('formSuccess'),
 };
 
 /* ── INIT ───────────────────────────────────────────────────── */
 function init() {
+  animateProgressBar();
   populateSiteMeta();
   buildHero();
   buildGallery('all');
@@ -67,15 +75,34 @@ function init() {
   bindTheme();
   bindCursor();
   bindKeyboard();
+  bindContactForm();
   startScrollObserver();
   startNavScrollListener();
+  disableImageProtections();
+}
+
+/* ── PROGRESS BAR ───────────────────────────────────────────── */
+function animateProgressBar() {
+  const bar = dom.progressBar;
+  if (!bar) return;
+  bar.style.cssText = 'position:fixed;top:0;left:0;height:2px;width:0;background:var(--accent);z-index:9999;transition:width 0.4s ease;pointer-events:none;';
+  // Fake progress: 0→70% while loading, 100% on load
+  let prog = 0;
+  const tick = setInterval(() => {
+    prog = Math.min(prog + Math.random() * 15, 70);
+    bar.style.width = prog + '%';
+  }, 120);
+  window.addEventListener('load', () => {
+    clearInterval(tick);
+    bar.style.width = '100%';
+    setTimeout(() => { bar.style.opacity = '0'; setTimeout(() => bar.remove(), 400); }, 400);
+  });
 }
 
 /* ── SITE META ──────────────────────────────────────────────── */
 function populateSiteMeta() {
   if (dom.aboutBio) dom.aboutBio.textContent = SITE.bio;
 
-  // Stats
   const total = Object.values(PHOTOS).flat().length;
   const cats  = Object.keys(PHOTOS).length;
   if (dom.aboutStats) {
@@ -85,43 +112,115 @@ function populateSiteMeta() {
       <div><div class="stat-num">∞</div><div class="stat-label">Passion</div></div>
     `;
   }
-
-  // Footer
   if (dom.footerCopy) {
     dom.footerCopy.textContent = `© ${new Date().getFullYear()} ${SITE.name} · All rights reserved`;
   }
-
-  // Social links
   if (dom.footerSocial) {
-    const icons = { instagram: 'IG', twitter: 'TW', email: '@' };
+    const icons = { instagram: 'IG', twitter: 'TW', email: '✉' };
     let html = '';
-    for (const [key, url] of Object.entries(SITE.social)) {
+    for (const [k, url] of Object.entries(SITE.social)) {
       if (url && url !== '#') {
-        html += `<a href="${escHtml(url)}" aria-label="${escHtml(key)}" rel="noopener noreferrer" target="_blank">${icons[key] || key}</a>`;
+        html += `<a href="${esc(url)}" aria-label="${esc(k)}" rel="noopener noreferrer" target="_blank">${icons[k] || k}</a>`;
       }
     }
     dom.footerSocial.innerHTML = html;
   }
+  if (dom.contactItems) {
+    let html = '';
+    if (SITE.social.email && SITE.social.email !== '#') {
+      html += `<div class="contact-item"><span class="ci-icon">✉</span><div><span class="ci-label">Email</span><a href="${esc(SITE.social.email)}" class="ci-value">${esc(SITE.social.email.replace('mailto:',''))}</a></div></div>`;
+    }
+    if (SITE.social.instagram && SITE.social.instagram !== '#') {
+      html += `<div class="contact-item"><span class="ci-icon">IG</span><div><span class="ci-label">Instagram</span><a href="${esc(SITE.social.instagram)}" class="ci-value" rel="noopener" target="_blank">@haydn3a</a></div></div>`;
+    }
+    if (!html) html = `<div class="contact-item"><span class="ci-icon">✉</span><div><span class="ci-label">Email</span><span class="ci-value">Add your email in photos.js</span></div></div>`;
+    dom.contactItems.innerHTML = html;
+  }
+}
+
+/* ── WATERMARK ENGINE ───────────────────────────────────────── */
+/**
+ * Loads an image src, draws it to a canvas, stamps the
+ * watermark text diagonally across it, and returns a
+ * data URL of the result. Results are cached by src.
+ */
+function applyWatermark(src) {
+  return new Promise((resolve, reject) => {
+    if (state.wmCache.has(src)) { resolve(state.wmCache.get(src)); return; }
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas  = document.createElement('canvas');
+      const W = canvas.width  = img.naturalWidth  || img.width;
+      const H = canvas.height = img.naturalHeight || img.height;
+      const ctx = canvas.getContext('2d');
+
+      // Draw the raw photo
+      ctx.drawImage(img, 0, 0);
+
+      // ── Watermark settings ────────────────────────────────
+      const text      = '© HAYDN 3A';
+      const fontSize  = Math.max(18, Math.round(Math.min(W, H) * 0.028));
+      const font      = `${fontSize}px "Cormorant Garamond", Georgia, serif`;
+      const opacity   = 0.30;   // adjust 0.0–1.0; lower = more subtle
+      const spacing   = Math.round(Math.min(W, H) * 0.28); // gap between repeats
+      const angle     = -30 * (Math.PI / 180);
+
+      ctx.save();
+      ctx.font        = font;
+      ctx.fillStyle   = `rgba(255,255,255,${opacity})`;
+      ctx.strokeStyle = `rgba(0,0,0,${opacity * 0.4})`;
+      ctx.lineWidth   = fontSize * 0.06;
+      ctx.textAlign   = 'center';
+      ctx.textBaseline= 'middle';
+
+      // Tile the watermark across the full image diagonally
+      const diagonal = Math.sqrt(W * W + H * H);
+      ctx.translate(W / 2, H / 2);
+      ctx.rotate(angle);
+      const cols = Math.ceil(diagonal / spacing) + 2;
+      const rows = Math.ceil(diagonal / spacing) + 2;
+      for (let r = -rows; r <= rows; r++) {
+        for (let c = -cols; c <= cols; c++) {
+          const x = c * spacing;
+          const y = r * spacing;
+          ctx.strokeText(text, x, y);
+          ctx.fillText(text, x, y);
+        }
+      }
+      ctx.restore();
+
+      // A single, more prominent corner credit
+      const credSize = Math.max(12, Math.round(Math.min(W, H) * 0.018));
+      ctx.font        = `${credSize}px "DM Mono", monospace`;
+      ctx.fillStyle   = `rgba(255,255,255,0.55)`;
+      ctx.textAlign   = 'right';
+      ctx.textBaseline= 'bottom';
+      ctx.fillText('© HAYDN 3A · haydn3a.com', W - 14, H - 12);
+
+      const dataURL = canvas.toDataURL('image/jpeg', 0.92);
+      state.wmCache.set(src, dataURL);
+      resolve(dataURL);
+    };
+    img.onerror = () => reject(new Error(`Failed to load: ${src}`));
+    img.src = src;
+  });
 }
 
 /* ── HERO SLIDESHOW ─────────────────────────────────────────── */
 function buildHero() {
-  // Collect featured photos from all categories
   state.heroPhotos = Object.values(PHOTOS).flat().filter(p => p.featured);
-  if (!state.heroPhotos.length) {
-    // fallback: use first of each category
-    state.heroPhotos = Object.values(PHOTOS).map(arr => arr[0]).filter(Boolean);
-  }
+  if (!state.heroPhotos.length) state.heroPhotos = Object.values(PHOTOS).map(a => a[0]).filter(Boolean);
   if (!state.heroPhotos.length) return;
 
-  // Build slides
   dom.heroSlides.innerHTML = '';
   dom.heroDots.innerHTML   = '';
 
   state.heroPhotos.forEach((photo, i) => {
     const slide = document.createElement('div');
     slide.className = 'hero-slide' + (i === 0 ? ' active' : '');
-    slide.style.backgroundImage = `url('${escHtml(photo.src)}')`;
+    slide.style.backgroundImage = `url('${esc(photo.src)}')`;
     slide.setAttribute('aria-label', photo.title || '');
     dom.heroSlides.appendChild(slide);
 
@@ -152,27 +251,19 @@ function goToHeroSlide(index) {
 
 function startHeroTimer() {
   clearInterval(state.heroTimer);
-  state.heroTimer = setInterval(() => {
-    goToHeroSlide(state.heroIndex + 1);
-  }, 5500);
+  state.heroTimer = setInterval(() => goToHeroSlide(state.heroIndex + 1), 5500);
 }
 
 /* ── GALLERY ────────────────────────────────────────────────── */
 function buildGallery(cat) {
   state.currentCat = cat;
-
-  if (cat === 'all') {
-    state.filteredPhotos = Object.entries(PHOTOS).flatMap(([category, photos]) =>
-      photos.map(p => ({ ...p, category }))
-    );
-  } else {
-    state.filteredPhotos = (PHOTOS[cat] || []).map(p => ({ ...p, category: cat }));
-  }
+  state.filteredPhotos = cat === 'all'
+    ? Object.entries(PHOTOS).flatMap(([c, photos]) => photos.map(p => ({ ...p, category: c })))
+    : (PHOTOS[cat] || []).map(p => ({ ...p, category: cat }));
 
   if (dom.galleryCount) {
     dom.galleryCount.textContent = `${state.filteredPhotos.length} photograph${state.filteredPhotos.length !== 1 ? 's' : ''}`;
   }
-
   dom.photoGrid.innerHTML = '';
 
   if (!state.filteredPhotos.length) {
@@ -180,59 +271,73 @@ function buildGallery(cat) {
     return;
   }
 
-  state.filteredPhotos.forEach((photo, i) => {
-    const card = buildCard(photo, i);
-    dom.photoGrid.appendChild(card);
-  });
-
-  // Stagger appearance
+  state.filteredPhotos.forEach((photo, i) => dom.photoGrid.appendChild(buildCard(photo, i)));
   setTimeout(() => {
     dom.photoGrid.querySelectorAll('.photo-card').forEach((card, i) => {
-      setTimeout(() => card.classList.add('visible'), i * 60);
+      setTimeout(() => card.classList.add('visible'), i * 55);
     });
   }, 50);
 }
 
 function buildCard(photo, index) {
   const card = document.createElement('article');
-  card.className = 'photo-card';
+  card.className = 'photo-card no-select';
   card.setAttribute('role', 'listitem');
   card.setAttribute('tabindex', '0');
   card.setAttribute('aria-label', photo.title || `Photo ${index + 1}`);
 
-  const img = document.createElement('img');
-  img.loading = 'lazy';
-  img.decoding = 'async';
-  img.alt = photo.title || '';
-  img.src = photo.src;
-  // Prevent right-click save
-  img.addEventListener('contextmenu', e => e.preventDefault());
-  img.addEventListener('dragstart',   e => e.preventDefault());
-  img.style.pointerEvents = 'none';  // extra layer: drag protection
+  // Use a canvas for the thumbnail too — watermarked from the start
+  const canvas = document.createElement('canvas');
+  canvas.style.cssText = 'width:100%;display:block;';
+  canvas.setAttribute('aria-hidden', 'true');
+
+  // Load image → watermark → draw into card canvas
+  applyWatermark(photo.src).then(dataURL => {
+    const img = new Image();
+    img.onload = () => {
+      canvas.width  = img.width;
+      canvas.height = img.height;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+    };
+    img.src = dataURL;
+  }).catch(() => {
+    // Fallback: plain img if canvas/CORS fails (e.g. local file://)
+    canvas.style.display = 'none';
+    const fallback = document.createElement('img');
+    fallback.src = photo.src;
+    fallback.alt = photo.title || '';
+    fallback.style.cssText = 'width:100%;display:block;pointer-events:none;';
+    fallback.addEventListener('contextmenu', e => e.preventDefault());
+    card.appendChild(fallback);
+  });
 
   const overlay = document.createElement('div');
   overlay.className = 'photo-card-overlay';
   overlay.innerHTML = `
     <div class="photo-card-info">
-      <h3>${escHtml(photo.title || '')}</h3>
-      <span>${escHtml(photo.location || photo.category || '')}</span>
-    </div>
-  `;
+      <h3>${esc(photo.title || '')}</h3>
+      <span>${esc(photo.location || photo.category || '')}</span>
+    </div>`;
 
   const zoomBtn = document.createElement('div');
   zoomBtn.className = 'photo-card-zoom';
   zoomBtn.innerHTML = '⊕';
   zoomBtn.setAttribute('aria-hidden', 'true');
 
-  card.appendChild(img);
+  // Shield over canvas to block drag
+  const shield = document.createElement('div');
+  shield.className = 'card-shield';
+  shield.setAttribute('aria-hidden', 'true');
+
+  card.appendChild(canvas);
   card.appendChild(overlay);
   card.appendChild(zoomBtn);
+  card.appendChild(shield);
 
-  card.addEventListener('click', () => openLightbox(index));
+  card.addEventListener('click',   () => openLightbox(index));
   card.addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLightbox(index); }
   });
-
   return card;
 }
 
@@ -241,7 +346,6 @@ function openLightbox(index) {
   state.lbIndex = index;
   renderLightboxPhoto();
   dom.lightbox.classList.add('open');
-  dom.lightbox.removeAttribute('style');
   document.body.style.overflow = 'hidden';
   dom.lightbox.focus();
   resetZoom();
@@ -257,51 +361,68 @@ function renderLightboxPhoto() {
   const photo = state.filteredPhotos[state.lbIndex];
   if (!photo) return;
 
-  dom.lbImg.src = photo.src;
-  dom.lbImg.alt = photo.title || '';
+  // Update counter badge
+  if (dom.lbCounter) {
+    dom.lbCounter.textContent = `${state.lbIndex + 1} / ${state.filteredPhotos.length}`;
+  }
 
-  // Prevent download / context-menu in lightbox too
-  dom.lbImg.addEventListener('contextmenu', e => e.preventDefault(), { once: false });
+  // Draw watermarked version onto the lightbox canvas
+  const canvas = dom.lbCanvas;
+  const ctx    = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Prev / next visibility
+  applyWatermark(photo.src).then(dataURL => {
+    const img = new Image();
+    img.onload = () => {
+      canvas.width  = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      ctx.drawImage(img, 0, 0);
+    };
+    img.src = dataURL;
+  }).catch(() => {
+    // Fallback plain draw
+    const img = new Image();
+    img.onload = () => {
+      canvas.width  = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      ctx.drawImage(img, 0, 0);
+    };
+    img.src = photo.src;
+  });
+
   dom.lbPrev.style.visibility = state.lbIndex > 0 ? 'visible' : 'hidden';
   dom.lbNext.style.visibility = state.lbIndex < state.filteredPhotos.length - 1 ? 'visible' : 'hidden';
 
-  // Meta
   const parts = [];
-  if (photo.location) parts.push(`<span>📍 <b>${escHtml(photo.location)}</b></span>`);
-  if (photo.date)     parts.push(`<span>📅 <b>${escHtml(photo.date)}</b></span>`);
-  if (photo.gear)     parts.push(`<span>📷 <b>${escHtml(photo.gear)}</b></span>`);
+  if (photo.location) parts.push(`<span>📍 <b>${esc(photo.location)}</b></span>`);
+  if (photo.date)     parts.push(`<span>📅 <b>${esc(photo.date)}</b></span>`);
+  if (photo.gear)     parts.push(`<span>📷 <b>${esc(photo.gear)}</b></span>`);
 
-  dom.lbMeta.innerHTML = `
-    <h2>${escHtml(photo.title || '')}</h2>
-    <div class="lb-meta-row">${parts.join('')}</div>
-  `;
+  dom.lbMeta.innerHTML = `<h2>${esc(photo.title || '')}</h2><div class="lb-meta-row">${parts.join('')}</div>`;
 }
 
-function lbNavigate(direction) {
-  const newIndex = state.lbIndex + direction;
-  if (newIndex < 0 || newIndex >= state.filteredPhotos.length) return;
-  state.lbIndex = newIndex;
+function lbNavigate(dir) {
+  const n = state.lbIndex + dir;
+  if (n < 0 || n >= state.filteredPhotos.length) return;
+  state.lbIndex = n;
   renderLightboxPhoto();
   resetZoom();
 }
 
 function bindLightbox() {
   dom.lbClose.addEventListener('click', closeLightbox);
-  dom.lbPrev.addEventListener('click', () => lbNavigate(-1));
-  dom.lbNext.addEventListener('click', () => lbNavigate(1));
+  dom.lbPrev.addEventListener('click',  () => lbNavigate(-1));
+  dom.lbNext.addEventListener('click',  () => lbNavigate(1));
+  dom.lightbox.addEventListener('click', e => { if (e.target === dom.lightbox) closeLightbox(); });
 
-  // Click outside image to close
-  dom.lightbox.addEventListener('click', e => {
-    if (e.target === dom.lightbox) closeLightbox();
-  });
+  // Prevent canvas right-click save
+  dom.lbCanvas.addEventListener('contextmenu', e => e.preventDefault());
 
   // Touch swipe
-  let touchStartX = 0;
-  dom.lightbox.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
-  dom.lightbox.addEventListener('touchend', e => {
-    const diff = touchStartX - e.changedTouches[0].clientX;
+  let tx = 0;
+  dom.lightbox.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, { passive: true });
+  dom.lightbox.addEventListener('touchend',   e => {
+    const diff = tx - e.changedTouches[0].clientX;
     if (Math.abs(diff) > 50) lbNavigate(diff > 0 ? 1 : -1);
   }, { passive: true });
 }
@@ -309,9 +430,9 @@ function bindLightbox() {
 /* ── ZOOM ───────────────────────────────────────────────────── */
 function applyZoom() {
   const pct = Math.round(state.zoom * 100);
-  dom.lbImg.style.transform = `translate(${state.panOffset.x}px, ${state.panOffset.y}px) scale(${state.zoom})`;
+  dom.lbCanvas.style.transform = `translate(${state.panOffset.x}px, ${state.panOffset.y}px) scale(${state.zoom})`;
   dom.zoomLevel.textContent = `${pct}%`;
-  dom.lbImg.style.cursor = state.zoom > 1 ? 'grab' : 'default';
+  dom.lbCanvas.style.cursor = state.zoom > 1 ? 'grab' : 'default';
 }
 
 function resetZoom() {
@@ -332,68 +453,55 @@ function clampPan() {
 function bindZoom() {
   dom.zoomIn.addEventListener('click', () => {
     state.zoom = Math.min(state.zoomMax, state.zoom + state.zoomStep);
-    clampPan();
-    applyZoom();
+    clampPan(); applyZoom();
   });
   dom.zoomOut.addEventListener('click', () => {
     state.zoom = Math.max(state.zoomMin, state.zoom - state.zoomStep);
-    clampPan();
-    applyZoom();
+    clampPan(); applyZoom();
   });
   dom.zoomReset.addEventListener('click', resetZoom);
 
-  // Wheel zoom
   dom.lbImageWrap.addEventListener('wheel', e => {
     e.preventDefault();
-    const delta = e.deltaY < 0 ? state.zoomStep : -state.zoomStep;
-    state.zoom = Math.min(state.zoomMax, Math.max(state.zoomMin, state.zoom + delta));
-    clampPan();
-    applyZoom();
+    const d = e.deltaY < 0 ? state.zoomStep : -state.zoomStep;
+    state.zoom = Math.min(state.zoomMax, Math.max(state.zoomMin, state.zoom + d));
+    clampPan(); applyZoom();
   }, { passive: false });
 
-  // Drag to pan
-  dom.lbImg.addEventListener('mousedown', e => {
+  // Mouse pan
+  dom.lbCanvas.addEventListener('mousedown', e => {
     if (state.zoom <= 1) return;
     e.preventDefault();
     state.isDragging = true;
     state.panStart = { x: e.clientX - state.panOffset.x, y: e.clientY - state.panOffset.y };
-    dom.lbImg.style.cursor = 'grabbing';
+    dom.lbCanvas.style.cursor = 'grabbing';
   });
   window.addEventListener('mousemove', e => {
     if (!state.isDragging) return;
     state.panOffset = { x: e.clientX - state.panStart.x, y: e.clientY - state.panStart.y };
-    clampPan();
-    applyZoom();
+    clampPan(); applyZoom();
   });
   window.addEventListener('mouseup', () => {
     if (!state.isDragging) return;
     state.isDragging = false;
-    dom.lbImg.style.cursor = state.zoom > 1 ? 'grab' : 'default';
+    dom.lbCanvas.style.cursor = state.zoom > 1 ? 'grab' : 'default';
   });
 
-  // Pinch-to-zoom (touch)
+  // Pinch zoom (touch)
   let lastDist = 0;
   dom.lbImageWrap.addEventListener('touchstart', e => {
-    if (e.touches.length === 2) {
-      lastDist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-    }
+    if (e.touches.length === 2) lastDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
   }, { passive: true });
   dom.lbImageWrap.addEventListener('touchmove', e => {
-    if (e.touches.length === 2) {
-      e.preventDefault();
-      const dist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      const scale = dist / lastDist;
-      state.zoom = Math.min(state.zoomMax, Math.max(state.zoomMin, state.zoom * scale));
-      lastDist = dist;
-      clampPan();
-      applyZoom();
-    }
+    if (e.touches.length !== 2) return;
+    e.preventDefault();
+    const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    state.zoom = Math.min(state.zoomMax, Math.max(state.zoomMin, state.zoom * (d / lastDist)));
+    lastDist = d;
+    clampPan(); applyZoom();
   }, { passive: false });
 }
 
@@ -428,21 +536,64 @@ function bindKeyboard() {
   });
 }
 
+/* ── CONTACT FORM ───────────────────────────────────────────── */
+function bindContactForm() {
+  const form = dom.contactForm;
+  if (!form) return;
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+
+    // Honeypot check
+    const hp = form.querySelector('input[name="_hp"]');
+    if (hp && hp.value) return; // bot caught
+
+    const name    = $('contactName')?.value.trim()    || '';
+    const email   = $('contactEmail')?.value.trim()   || '';
+    const subject = $('contactSubject')?.value        || '';
+    const message = $('contactMessage')?.value.trim() || '';
+
+    if (!name || !email || !message) {
+      // Simple validation highlight
+      [$('contactName'), $('contactEmail'), $('contactMessage')].forEach(el => {
+        if (el && !el.value.trim()) el.style.borderColor = '#c96e6e';
+        else if (el) el.style.borderColor = '';
+      });
+      return;
+    }
+
+    const target  = SITE.social.email?.replace('mailto:', '') || '';
+    const subj    = `Haydn 3A Enquiry${subject ? ' — ' + subject : ''}`;
+    const body    = `Name: ${name}\nEmail: ${email}\n\n${message}`;
+    const mailto  = `mailto:${encodeURIComponent(target)}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
+
+    window.location.href = mailto;
+
+    if (dom.formSuccess) {
+      dom.formSuccess.hidden = false;
+      setTimeout(() => { dom.formSuccess.hidden = true; }, 6000);
+    }
+  });
+
+  // Clear error colour on input
+  form.querySelectorAll('input, textarea').forEach(el => {
+    el.addEventListener('input', () => { el.style.borderColor = ''; });
+  });
+}
+
 /* ── THEME ──────────────────────────────────────────────────── */
 function bindTheme() {
-  // Persist theme preference
   const saved = localStorage.getItem('h3a-theme');
   if (saved) document.documentElement.setAttribute('data-theme', saved);
 
   dom.themeToggle.addEventListener('click', () => {
-    const current = document.documentElement.getAttribute('data-theme');
-    const next = current === 'dark' ? 'light' : 'dark';
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', next);
     localStorage.setItem('h3a-theme', next);
   });
 }
 
-/* ── NAV BEHAVIOUR ──────────────────────────────────────────── */
+/* ── NAV ────────────────────────────────────────────────────── */
 function bindNav() {
   dom.navBurger.addEventListener('click', () => {
     const isOpen = dom.mobileNav.classList.toggle('open');
@@ -457,90 +608,72 @@ function closeMobileNav() {
   dom.navBurger.setAttribute('aria-expanded', 'false');
   document.body.style.overflow = '';
 }
-
 function startNavScrollListener() {
-  const nav = $('nav');
-  const onScroll = () => nav.classList.toggle('scrolled', window.scrollY > 40);
+  const onScroll = () => dom.nav.classList.toggle('scrolled', window.scrollY > 40);
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
 }
 
-/* ── ACTIVE NAV LINK on scroll ─────────────────────────────── */
+/* ── SCROLL OBSERVER ────────────────────────────────────────── */
 function startScrollObserver() {
-  const sections = document.querySelectorAll('section[id], footer');
-  const links    = document.querySelectorAll('.nav-links a');
-
-  const observer = new IntersectionObserver(entries => {
+  const links = document.querySelectorAll('.nav-links a');
+  const obs = new IntersectionObserver(entries => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
         links.forEach(l => l.classList.remove('active'));
-        const match = document.querySelector(`.nav-links a[href="#${entry.target.id}"]`);
-        if (match) match.classList.add('active');
+        const m = document.querySelector(`.nav-links a[href="#${entry.target.id}"]`);
+        if (m) m.classList.add('active');
       }
     });
-  }, { threshold: 0.35 });
-
-  sections.forEach(s => observer.observe(s));
+  }, { threshold: 0.3 });
+  document.querySelectorAll('section[id]').forEach(s => obs.observe(s));
 }
 
 /* ── CUSTOM CURSOR ──────────────────────────────────────────── */
 function bindCursor() {
-  // Only on non-touch devices
   if (window.matchMedia('(hover: none)').matches) return;
-
   const dot  = $('cursorDot');
   const ring = $('cursorRing');
-  let ringX = 0, ringY = 0, dotX = 0, dotY = 0;
-  let mx = 0, my = 0;
+  let rx = 0, ry = 0, dx = 0, dy = 0, mx = 0, my = 0;
 
   window.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; }, { passive: true });
+  (function loop() {
+    dx += (mx - dx) * 0.9; dy += (my - dy) * 0.9;
+    rx += (mx - rx) * 0.12; ry += (my - ry) * 0.12;
+    dot.style.left  = dx + 'px'; dot.style.top  = dy + 'px';
+    ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
+    requestAnimationFrame(loop);
+  })();
 
-  function animateCursor() {
-    dotX  += (mx - dotX)  * 0.9;
-    dotY  += (my - dotY)  * 0.9;
-    ringX += (mx - ringX) * 0.12;
-    ringY += (my - ringY) * 0.12;
-
-    dot.style.left  = dotX  + 'px';
-    dot.style.top   = dotY  + 'px';
-    ring.style.left = ringX + 'px';
-    ring.style.top  = ringY + 'px';
-    requestAnimationFrame(animateCursor);
-  }
-  animateCursor();
-
-  const hoverEls = 'a, button, .photo-card, .tab-btn, .hero-dot';
-  document.addEventListener('mouseover', e => {
-    if (e.target.closest(hoverEls)) document.body.classList.add('cursor-hover');
-  });
-  document.addEventListener('mouseout', e => {
-    if (e.target.closest(hoverEls)) document.body.classList.remove('cursor-hover');
-  });
+  const hov = 'a, button, .photo-card, .tab-btn, .hero-dot';
+  document.addEventListener('mouseover', e => { if (e.target.closest(hov)) document.body.classList.add('cursor-hover'); });
+  document.addEventListener('mouseout',  e => { if (e.target.closest(hov)) document.body.classList.remove('cursor-hover'); });
 }
 
-/* ── SECURITY: Disable devtools shortcuts (soft deterrent) ──── */
-// Note: This is a UI-layer deterrent only. Determined users can always
-// view source. For real image protection, watermark and host low-res.
-document.addEventListener('keydown', e => {
-  // Disable F12
-  if (e.key === 'F12') { e.preventDefault(); return false; }
-  // Disable Ctrl+Shift+I / Ctrl+U / Ctrl+S
-  if (e.ctrlKey && e.shiftKey && ['i','I','j','J'].includes(e.key)) { e.preventDefault(); return false; }
-  if (e.ctrlKey && ['u','U','s','S'].includes(e.key)) { e.preventDefault(); return false; }
-});
-// Disable right-click globally (images already have it disabled individually)
-document.addEventListener('contextmenu', e => {
-  if (e.target.tagName === 'IMG') e.preventDefault();
-});
+/* ── IMAGE PROTECTIONS ──────────────────────────────────────── */
+function disableImageProtections() {
+  // Global context-menu block on images and canvas
+  document.addEventListener('contextmenu', e => {
+    if (['IMG','CANVAS'].includes(e.target.tagName)) e.preventDefault();
+  });
+
+  // Block common devtools shortcuts
+  document.addEventListener('keydown', e => {
+    if (e.key === 'F12') { e.preventDefault(); return; }
+    if (e.ctrlKey && e.shiftKey && ['i','I','j','J','c','C'].includes(e.key)) { e.preventDefault(); return; }
+    if (e.ctrlKey && ['u','U','s','S'].includes(e.key)) { e.preventDefault(); }
+  });
+
+  // Disable text selection on photo grid
+  dom.photoGrid.style.userSelect = 'none';
+  dom.photoGrid.style.webkitUserSelect = 'none';
+}
 
 /* ── UTILITY ────────────────────────────────────────────────── */
-function escHtml(str) {
+function esc(str) {
   return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
 }
 
 /* ── BOOT ───────────────────────────────────────────────────── */
