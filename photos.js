@@ -15,7 +15,7 @@
  *    location  — optional location tag
  *    date      — optional date string
  *    gear      — optional camera / lens info
- *    featured  — true = shown in hero carousel
+ *    featured  — no longer used (hero slideshow now selects random images)
  */
 
 const PHOTOS = {
@@ -71,7 +71,80 @@ const PHOTOS = {
       location: "RAF Lakenheath, UK",
       date: "2026",
       featured: true
-    }
+    },
+       {
+      src: "https://i.postimg.cc/5NCkrpFK/IMG_6016.jpg",
+      title: "5573 Preparing To Land",
+      location: "RAF Lakenheath, UK",
+      date: "2026",
+      featured: false
+    },       {
+      src: "https://i.postimg.cc/ZqT7CSsx/IMG_5894.jpg",
+      title: "5616 High Landing",
+      location: "RAF Lakenheath, UK",
+      date: "2026",
+      featured: false
+    },       {
+      src: "https://i.postimg.cc/ThMQGMWH/IMG_5510.png",
+      title: "5599 Quick Takeoff",
+      location: "RAF Lakenheath, UK",
+      date: "2026",
+      featured: false
+    },       {
+      src: "https://i.postimg.cc/14hMPhN7/IMG_5583.png",
+      title: "Quick Takeoff Training",
+      location: "RAF Lakenheath, UK",
+      date: "2026",
+      featured: false
+    },       {
+      src: "https://i.postimg.cc/Vsr8YqCs/IMG_5864.png",
+      title: "Two F-35's Landing Together",
+      location: "RAF Lakenheath, UK",
+      date: "2026",
+      featured: true
+    },
+          {
+      src: "https://i.postimg.cc/qBhTks38/IMG_5986.png",
+      title: "An F-35 flying low over the runway",
+      location: "RAF Lakenheath, UK",
+      date: "2026",
+      featured: true
+    },
+          {
+      src: "https://i.postimg.cc/DfJT2rXc/IMG_6180.png",
+      title: "Two F-22 Raptors preparing to take off",
+      location: "RAF Lakenheath, UK",
+      date: "2026",
+      featured: true
+    },
+          {
+      src: "https://i.postimg.cc/v8JdD4r5/IMG_6209.png",
+      title: "An F-22 Raptor Taking Off",
+      location: "RAF Lakenheath, UK",
+      date: "2026",
+      featured: true
+    },
+          {
+      src: "https://i.postimg.cc/L5CR0Dq7/IMG_6312.jpg",
+      title: "An Airbus A400M Taking Off",
+      location: "Cobra Warrior, RAF Waddington, UK",
+      date: "2026",
+      featured: true
+    },
+          {
+      src: "https://i.postimg.cc/4yLZFPKq/IMG_6347.jpg",
+      title: "A German Eurofighter Typhoon Taking Off",
+      location: "Cobra Warrior, RAF Waddington, UK",
+      date: "2026",
+      featured: true
+    },
+          {
+      src: "https://i.postimg.cc/zvt5P7b1/IMG_6387.jpg",
+      title: "A German Eurofighter Typhoon Taking Off Behind a Fence",
+      location: "Cobra Warrior, RAF Waddington, UK",
+      date: "2026",
+      featured: true
+    },
   ],
 
   architecture: [

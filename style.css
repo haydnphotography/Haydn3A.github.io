@@ -145,7 +145,7 @@ body::before {
   position:relative; height:100vh; min-height:600px;
   display:flex; align-items:flex-end; overflow:hidden;
 }
-.hero-slides { position:absolute; inset:0; }
+.hero-slides { position:absolute; inset:0; will-change: transform; }
 .hero-slide {
   position:absolute; inset:0; opacity:0;
   background-size:cover; background-position:center;
@@ -233,9 +233,14 @@ section { padding:8rem 4rem; max-width:1600px; margin:0 auto; }
   break-inside:avoid; margin-bottom:1rem; position:relative;
   overflow:hidden; cursor:pointer; background:var(--bg-3);
   opacity:0; transform:translateY(20px);
-  transition:opacity .5s, transform .5s;
+  transition:opacity .5s, transform .5s, box-shadow .3s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 .photo-card.visible { opacity:1; transform:translateY(0); }
+.photo-card:hover {
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  transform: translateY(-4px);
+}
 .photo-card canvas, .photo-card img {
   width:100%; display:block;
   transition:transform .6s var(--transition);
@@ -502,6 +507,12 @@ footer {
   .nav-burger { display:flex; }
   section { padding:5rem 1.5rem; }
   .hero-content { padding:0 1.5rem 4rem; }
+  .hero-dots { right:1.5rem; bottom:2rem; }
+  .hero-dot { width:24px; height:2px; }
+  .hero-dot.active { width:48px; }
+  .scroll-cue { bottom:1.5rem; }
+  .scroll-cue span { font-size:.5rem; }
+  .scroll-line { height:32px; }
   #about { grid-template-columns:1fr; gap:3rem; }
   .contact-grid { grid-template-columns:1fr; gap:3rem; }
   .form-row { grid-template-columns:1fr; }
@@ -509,4 +520,10 @@ footer {
   .lb-arrow { width:40px; height:40px; }
   .lb-arrow.prev { left:.5rem; }
   .lb-arrow.next { right:.5rem; }
+}
+
+@media(max-width:600px) {
+  .hero-title { font-size:clamp(2.5rem, 12vw, 5rem); }
+  .hero-subtitle { font-size:.6rem; }
+  .scroll-cue { display:none; } /* Hide scroll cue on very small screens */
 }

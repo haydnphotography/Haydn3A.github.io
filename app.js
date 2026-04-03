@@ -67,6 +67,7 @@ function init() {
   animateProgressBar();
   populateSiteMeta();
   buildHero();
+  bindHeroTouch();
   buildGallery('all');
   bindTabButtons();
   bindLightbox();
@@ -209,9 +210,19 @@ function applyWatermark(src) {
 }
 
 /* ── HERO SLIDESHOW ─────────────────────────────────────────── */
+function shuffleArray(array) {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 function buildHero() {
-  state.heroPhotos = Object.values(PHOTOS).flat().filter(p => p.featured);
-  if (!state.heroPhotos.length) state.heroPhotos = Object.values(PHOTOS).map(a => a[0]).filter(Boolean);
+  const allPhotos = Object.values(PHOTOS).flat();
+  const numSlides = Math.min(6, allPhotos.length);
+  state.heroPhotos = shuffleArray(allPhotos).slice(0, numSlides);
   if (!state.heroPhotos.length) return;
 
   dom.heroSlides.innerHTML = '';
@@ -252,6 +263,53 @@ function goToHeroSlide(index) {
 function startHeroTimer() {
   clearInterval(state.heroTimer);
   state.heroTimer = setInterval(() => goToHeroSlide(state.heroIndex + 1), 5500);
+}
+
+function bindHeroTouch() {
+  let startX = 0;
+  let startY = 0;
+  let isSwiping = false;
+
+  dom.heroSlides.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    isSwiping = true;
+    clearInterval(state.heroTimer); // Pause auto-advance during swipe
+  }, { passive: true });
+
+  dom.heroSlides.addEventListener('touchmove', e => {
+    if (!isSwiping) return;
+    const deltaX = startX - e.touches[0].clientX;
+    const deltaY = startY - e.touches[0].clientY;
+
+    // Only consider horizontal swipes
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+      e.preventDefault(); // Prevent scrolling
+    }
+  }, { passive: false });
+
+  dom.heroSlides.addEventListener('touchend', e => {
+    if (!isSwiping) return;
+    isSwiping = false;
+
+    const endX = e.changedTouches[0].clientX;
+    const deltaX = startX - endX;
+    const deltaY = startY - e.changedTouches[0].clientY;
+
+    // Only trigger swipe if horizontal movement is greater than vertical
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+      if (deltaX > 0) {
+        // Swipe left - next slide
+        goToHeroSlide(state.heroIndex + 1);
+      } else {
+        // Swipe right - previous slide
+        goToHeroSlide(state.heroIndex - 1);
+      }
+    }
+
+    // Restart timer after a short delay
+    setTimeout(() => startHeroTimer(), 1000);
+  }, { passive: true });
 }
 
 /* ── GALLERY ────────────────────────────────────────────────── */
@@ -627,6 +685,16 @@ function startScrollObserver() {
     });
   }, { threshold: 0.3 });
   document.querySelectorAll('section[id]').forEach(s => obs.observe(s));
+
+  // Hero parallax effect
+  const heroSlides = dom.heroSlides;
+  if (heroSlides) {
+    window.addEventListener('scroll', () => {
+      const scrolled = window.pageYOffset;
+      const rate = scrolled * -0.5;
+      heroSlides.style.transform = `translateY(${rate}px)`;
+    }, { passive: true });
+  }
 }
 
 /* ── CUSTOM CURSOR ──────────────────────────────────────────── */
